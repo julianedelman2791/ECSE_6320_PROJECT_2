@@ -7,7 +7,7 @@ To install and run the program, follow these steps:
 1. **Clone the Repository and Build the Project:**
 
     ```bash
-    git clone [https://github.com/yourusername/matrix-multiply-optimizations.git](https://github.com/julianedelman2791/ECSE_6320_PROJECT_2/tree/main)
+    https://github.com/julianedelman2791/ECSE_6320_PROJECT_2/tree/main
     cd matrix-multiply-optimizations
     make
     ```
