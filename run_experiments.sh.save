@@ -3,7 +3,6 @@
 # Script: run_experiments.sh
 # Purpose: Automate running matrix multiplication experiments and record timing results.
 
-# Exit immediately if a command exits with a non-zero status
 set -e
 
 # Enable debugging (optional; comment out if not needed)
