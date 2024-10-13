@@ -1,0 +1,143 @@
+#!/bin/bash
+
+# Script: run_experiments.sh
+# Purpose: Automate running matrix multiplication experiments and record timing results.
+
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+# Enable debugging (optional; comment out if not needed)
+# set -x
+
+# Output CSV file
+OUTPUT_FILE="results.csv"
+
+# Remove existing results file if it exists
+rm -f "$OUTPUT_FILE"
+
+# Create CSV header
+echo "Experiment,Matrix_Size,Sparsity_A,Sparsity_B,Multi-threading,Threads,SIMD,Cache_Opt,Time_s" > "$OUTPUT_FILE"
+
+# Define experiment parameters
+matrix_sizes=(1000 5000 10000)
+sparsity_levels=(1.0 0.01 0.001)  # 100%, 1%, 0.1%
+
+# Optimization flags
+# Multi-threading: On/Off
+multi_threading_options=("Off" "On")
+# Number of threads to use when multi-threading is On
+threads_options=(4)  # Adjust as needed
+# SIMD: On/Off
+simd_options=("Off" "On")
+# Cache Optimization: On/Off
+cache_opt_options=("Off" "On")
+
+# Initialize experiment counter
+exp_num=1
+
+# Function to run a single experiment
+run_experiment() {
+    local size=$1
+    local sparsity_a=$2
+    local sparsity_b=$3
+    local mt=$4
+    local threads=$5
+    local simd=$6
+    local cache_opt=$7
+
+    # Build the command
+    cmd="./matrix_multiply --size $size --sparsity-A $sparsity_a --sparsity-B $sparsity_b"
+
+    # Add optimization flags
+    if [ "$mt" == "On" ]; then
+        cmd+=" --threads $threads"
+    fi
+
+    if [ "$simd" == "On" ]; then
+        cmd+=" --simd"
+    fi
+
+    if [ "$cache_opt" == "On" ]; then
+        cmd+=" --cache-opt"
+    fi
+
+    echo "Running Experiment $exp_num: $cmd"
+
+    # Execute the command and capture the output and any errors
+    # Redirect stderr to stdout to capture all output
+    output=$($cmd 2>&1)
+
+    # Extract the time taken from the output using awk
+    # Assumes the output line is: "Time taken: X.XXXXXX seconds"
+    time_taken=$(echo "$output" | awk '/Time taken:/ {print $3}')
+
+    if [ -z "$time_taken" ]; then
+        echo "Warning: Time taken not found in output for Experiment $exp_num."
+        echo "Program Output:"
+        echo "$output"
+        time_taken="N/A"
+    fi
+
+    # Append results to CSV
+    echo "$exp_num,$size,$sparsity_a,$sparsity_b,$mt,$threads,$simd,$cache_opt,$time_taken" >> "$OUTPUT_FILE"
+
+    echo "Experiment $exp_num completed. Time taken: $time_taken seconds."
+    echo "----------------------------------------"
+
+    # Increment experiment number
+    exp_num=$((exp_num + 1))
+}
+
+# ------------------------------
+# 1. Varying Matrix Size and Sparsity
+# ------------------------------
+echo "Starting Experiments: Varying Matrix Size and Sparsity"
+for size in "${matrix_sizes[@]}"; do
+    for sparsity_a in "${sparsity_levels[@]}"; do
+        for sparsity_b in "${sparsity_levels[@]}"; do
+            # Run without any optimizations (baseline)
+            run_experiment "$size" "$sparsity_a" "$sparsity_b" "Off" "N/A" "Off" "Off"
+
+            # Run with Multi-threading only
+            run_experiment "$size" "$sparsity_a" "$sparsity_b" "On" "${threads_options[0]}" "Off" "Off"
+
+            # Run with SIMD only
+            run_experiment "$size" "$sparsity_a" "$sparsity_b" "Off" "N/A" "On" "Off"
+
+            # Run with Cache Optimization only
+            run_experiment "$size" "$sparsity_a" "$sparsity_b" "Off" "N/A" "Off" "On"
+
+            # Run with Multi-threading and SIMD
+            run_experiment "$size" "$sparsity_a" "$sparsity_b" "On" "${threads_options[0]}" "On" "Off"
+
+            # Run with Multi-threading and Cache Optimization
+            run_experiment "$size" "$sparsity_a" "$sparsity_b" "On" "${threads_options[0]}" "Off" "On"
+
+            # Run with SIMD and Cache Optimization
+            run_experiment "$size" "$sparsity_a" "$sparsity_b" "Off" "N/A" "On" "On"
+
+            # Run with All Optimizations
+            run_experiment "$size" "$sparsity_a" "$sparsity_b" "On" "${threads_options[0]}" "On" "On"
+        done
+    done
+done
+
+# ------------------------------
+# 2. Optimization Experiments for Specific Matrices
+# ------------------------------
+echo "Starting Optimization Experiments for Specific Matrices"
+
+# Define specific matrices for optimization experiments
+# Matrix 1: Size = 1000x1000, Sparsity = 100%
+size1=1000
+sparsity_a1=1.0
+sparsity_b1=1.0
+
+# Matrix 2: Size = 10000x10000, Sparsity = 1%
+size2=10000
+sparsity_a2=0.01
+sparsity_b2=0.01
+
+# List of optimization configurations
+# Each configuration is a combination of Multi-threading, SIMD, and Cache Optimization
+#
